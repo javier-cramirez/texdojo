@@ -1,11 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { problems } from './js/prep2';
+import { problems } from '../js/prep2';
+import { fisherYatesWIKI } from '../js/arrayUtils';
 
-import TokenCard from './components/TokenCard';
-import TitleCard from './components/TitleCard';
-import GenericLink from './components/GenericLink';
-import GenericButton from './components/GenericButton';
+import TokenCard from '../components/TokenCard';
+import TitleCard from '../components/TitleCard';
+import GenericLink from '../components/GenericLink';
+import GenericButton from '../components/GenericButton';
 
 function getDistinctCategories(problemsArray) {
         const flattened = problemsArray.flatMap(p => p.categories);
@@ -15,13 +16,32 @@ function getDistinctCategories(problemsArray) {
 }
 
 function GameCategories () {
-    const [categories] = useState(() => getDistinctCategories(problems));
+    const [categories, setCategories] = useState(() => getDistinctCategories(problems));
     const [selectedItems, setSelectedItems] = useState([]);
     const [isOpenDropdown, setIsOpenDropdown] = useState(false);
+
+    // const distinct_categories = getDistinctCategories(problems).filter(c => c !== 'all');
+
+    // const mapCategoryToDifficulty = useMemo(() => {
+    //     const mp = {};
+    //     distinct_categories.forEach(category => {
+    //         const timeLimits = problems.filter(problem => problem.categories.includes(category))
+    //     })
+    // })
+
     
     const handleDropdown = () => {
         setIsOpenDropdown(!isOpenDropdown);
     }
+
+    const scramCategories = () => {
+        setCategories(prev => {
+        const copy = [...prev];
+        fisherYatesWIKI(copy);
+        return copy;
+        });
+    };
+
 
     const handleItemSelect = (itemKey) => {
         if (selectedItems.includes(itemKey)) {
@@ -36,8 +56,24 @@ function GameCategories () {
 
     const applyFilter = (filterType) => {
         switch(filterType) {
-            case "alphabetical":
-                categories.sort();
+            case "A-Z":
+                setCategories(prev => 
+                    [...prev].sort((a,b) => a.localeCompare(b))
+                );
+                break;
+            case "Z-A":
+                setCategories(prev => 
+                    [...prev].sort().reverse((a,b) => a.localeCompare(b))
+                );
+                break;
+            case "scramble":
+                scramCategories();
+                break;
+            case "hardest first":
+                
+                break;
+                
+            case "easiest first":
                 break;
             default:
                 break;
@@ -62,7 +98,10 @@ function GameCategories () {
                             {isOpenDropdown ? (
                                 <div className='origin-top-left absolute left-0 mt-2 w-44 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20'>
                                     <div className='py-1'>
-                                        <GenericButton onClick={applyFilter} text="alphabetical"/>
+                                        <GenericButton onClick={() => applyFilter("A-Z")} text="A-Z"/>
+                                        <GenericButton onClick={() => applyFilter("scramble")} text="scramble"/>
+                                        <GenericButton onClick={() => applyFilter("Z-A")} text="Z-A"/>
+                                        
                                     </div>
                                 </div>
                             ) :  null}

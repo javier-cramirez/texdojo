@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom'
-import GenericDropdown from './components/GenericDropdown';
+import GenericDropdown from '../components/GenericDropdown';
 
 function LandingPage () {
     const [isOpenDropdown, setIsOpenDropdown] = useState(false);

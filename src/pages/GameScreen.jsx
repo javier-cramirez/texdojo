@@ -1,14 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { fisherYatesWIKI } from './js/arrayUtils';
-import { problems } from './js/prep2';
+import { fisherYatesWIKI } from '../js/arrayUtils';
+import { problems } from '../js/prep2';
+import { handleTimeLimit } from '../js/gameUtils';
 
-import TokenCard from "./components/TokenCard";
-import CardGrid from "./components/CardGrid";
-import TitleCard from './components/TitleCard';
-import MathDisplay from './components/MathDisplay';
-import GenericLink from './components/GenericLink';
-import GenericButton from './components/GenericButton';
+import TokenCard from "../components/TokenCard";
+import CardGrid from "../components/CardGrid";
+import TitleCard from '../components/TitleCard';
+import MathDisplay from '../components/MathDisplay';
+import GenericLink from '../components/GenericLink';
+import GenericButton from '../components/GenericButton';
+import TimeCard from '../components/TimeCard';
+import CorrectCard from '../components/CorrectCard';
+import StreakDisplay from '../components/StreakDisplay';
 
 const shuffle = arr => {
   const a = [...arr];
@@ -20,6 +24,8 @@ function GameScreen() {
   const { state } = useLocation();
   // check if all, or selected few
   const selected = state?.selectedCategories ?? ['all']
+  const isTimeUp = state?.timeLimit ?? 0
+
   const isAllMode = selected.length === 1 && selected[0] === "all";
 
   const filteredProblems = isAllMode
@@ -39,10 +45,14 @@ function GameScreen() {
   const [showAnswer, setShowAnswer] = useState(false);
   const [prepareSkip, setPrepareSkip] = useState(false);
 
+  const [numberCorrect, setNumberCorrect] = useState(0);
+  const [countCorrectTokens, setCountCorrectTokens] = useState(0);
 
   useEffect(() => { // board reset 
     setSlots(Array(problem.tokens.length).fill(""));
     setTokens(shuffle(problem.tokens));
+
+    setCountCorrectTokens(0);
 
     setPlayerSlots(Array(problem.tokens.length).fill(null));
 
@@ -58,56 +68,76 @@ function GameScreen() {
 
     const token = e.dataTransfer.getData('text/plain');
     const sourceSlotTok = e.dataTransfer.getData('source-slot');
-    const sourceIdx = sourceSlotTok === "" ? null : Number(sourceSlotStr);
+    const sourceIdx = sourceSlotTok !== "" ? Number(sourceSlotTok): null;
 
     if (!token) return; // prevent duplicates
     if (slots[idx]) return;
 
-    
-
-
-    // token placement
-    setSlots(s => s.map((c, i) => i === idx ? token : c));
-    // token removal after being placed
-    setTokens(t => t.filter(x => x !== token));
-    // check if token is correct/wrong
-    setPlayerSlots(playerSlots => 
-      playerSlots.map((state, i) => {
-        if (i != idx) return state;
-        return token === problem.tokens[idx] ? 'Correct' : 'Incorrect';
+    if (sourceIdx !== null && !isNaN(sourceIdx)) {
+      setSlots(slots => { // handles drag & drop for tokens already in a slot (not the token bar)
+        const s = [...slots]; // 
+        s[sourceIdx] = "";
+        s[idx] = token;
+        return s;
+      });
+      setPlayerSlots(playerSlots => {
+        const p = [...playerSlots];
+        //p[idx] = p[sourceIdx];
+        p[idx] = (token === problem.tokens[idx]) // highlights the next token placement green or red
+          ? 'Correct'
+          : 'Incorrect'
+        p[sourceIdx] = null;
+        return p;
       })
-    )
+    } else {
+      // token placement
+      setSlots(s => s.map((c, i) => i === idx ? token : c));
+      // token removal after being placed
+      setTokens(t => t.filter(x => x !== token));
+
+      // check if token is correct/wrong
+      setPlayerSlots(playerSlots => 
+        playerSlots.map((state, i) => 
+          i === idx ? (token === problem.tokens[idx] ? 'Correct' : 'Incorrect') : state
+      ));
+    }
+
+    setCountCorrectTokens(prevCount => { // how many tokens are currently in their correct place
+      const newCount = prevCount + (token === problem.tokens[idx] ? 1 : 0); 
+      if (newCount === problem.tokens.length) {
+        signalSkipProblem();
+        setNumberCorrect(n => n + 1);
+      }
+
+      return newCount;
+    })
   }
 
   const handleDragOver = e => e.preventDefault();
 
-  const signalSkipProblem = () => { // lets user see answer before confirming to fetch next problem
+  const signalSkipProblem = useCallback(() => { // lets user see answer before confirming to fetch next problem
     setPrepareSkip(true);
     setShowAnswer(true);
-  }
+  }, [])
 
   const skipProblem = () => { // handles logic for switching problems (indices, tokens, reveals)
     let next_idx;
-    do {
+    do { // sample random index from current problem subset
       next_idx = Math.floor(Math.random()*filteredProblems.length);
     } while (next_idx === idx && filteredProblems.length > 1);
 
     setIdx(next_idx);
-    //loadProblem(filteredProblems[next_idx]);
-    //setSlots(Array(filteredProblems[next_idx].tokens.length).fill(""));
-    //setTokens([...filteredProblems[next_idx].tokens]);
-    //setPrepareSkip(false);
-    //setShowAnswer(false);
-    //setRevealed(false);
   };
 
   return (
     <div className="p-3 bg-gray-100 font-mono rounded">
+
       <TitleCard title={problem.title} isLatex={true}/>
-      {prepareSkip 
+
+      {prepareSkip // contains the correctly placed tokens or the usual empty slots
         ? <CardGrid cards={problem.tokens}/>
         : <div
-            className="grid gap-6 mb-1 p-8 font-mono rounded border border-gray-400"
+            className="grid gap-6 mb-1 p-3 font-mono rounded border border-gray-400"
             style={{ gridTemplateColumns: `repeat(auto-fit, minmax(80px, 1fr))`}}
           >
             {
@@ -142,25 +172,14 @@ function GameScreen() {
             }
           </div>
       }
-
-      <div className="rounded p-3 flex flex-row justify-center">
-        <GenericLink to="/gameCategories" text="Restart"/>
-
-        {prepareSkip 
-          ? <GenericButton onClick={skipProblem} text="Next Problem"/>
-          : (filteredProblems.length > 1) && (
-            <GenericButton onClick={signalSkipProblem} text="Skip Problem"/>
-            ) 
-        }
-        <GenericLink to="/" text="End Game"/>
-      </div>
-      <div className="text-xl mb-2 align-center"> {prepareSkip ? 'Answer' : 'Tokens'} </div>
+      
+      <div className="text-xl mb-2 align-center"> {prepareSkip ? 'Answer' : 'Tokens'} </div> 
 
       <div 
         className="bg-white rounded shadow p-4 grid gap-2"
         style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))' }}
       >
-        {!prepareSkip && 
+        {!prepareSkip &&  // 
           (
               <div 
                 className="bg-white rounded shadow p-4 grid gap-2"
@@ -187,7 +206,31 @@ function GameScreen() {
           <button className={'w-3xs'} onClick={() => setShowAnswer(s => !s)}> {showAnswer ? 'Hide' : 'Show'} Answer </button>
         </div>
       )}
+
       {showAnswer && <MathDisplay latex={problem.latex}/>} 
+
+      <div className="rounded p-7 flex flex-row justify-center">
+        <CorrectCard
+          numberCorrect={numberCorrect}
+        />
+
+        <GenericLink to="/gameCategories" text="Restart"/>
+
+        {prepareSkip 
+          ? <GenericButton onClick={skipProblem} text="Next Problem"/>
+          : (filteredProblems.length > 1) && (
+            <GenericButton onClick={signalSkipProblem} text="Skip Problem"/>
+            ) 
+        }
+        <GenericLink to="/" text="End Game"/>
+
+        <TimeCard
+          isTimeStart={!prepareSkip}
+          timeLimit={handleTimeLimit(problem.tokens.length)}
+          onTimeout={signalSkipProblem}
+        />
+      </div>
+
       </div>
   )
 }

@@ -1,3 +1,49 @@
+export function infModeProblemStreaks(winStreak, lossStreak) {
+    if (winStreak % 5 == 0 && 10 <= winStreak < 30) {
+        return [
+            "YOU KNOW YOUR STUFF",
+            "KING OF EQUATIONS, HUH?",
+            "YOU'RE ON A HOT STREAK",
+            "WE GOT A HOTSHOT HERE.",
+            "LET 'EM KNOW",
+        ]
+    } else if (30 <= winStreak <= 50) {
+        return [
+            "THIS IS SOME EULER-LEVEL KNOWLEDGE..",
+            "ELITE BALL KNOWLEDGE!!!",
+            "IS THIS GAME TOO EASY FOR YOU?",
+            "WHO LET HIM COOK???",
+            "ALRIGHT BRO, WE SEE THE FIT",
+            "FREDERICK CARL WHO? ISSAC WHO???"
+        ]
+    }
+
+    if (lossStreak % 5 == 0 && 10 <= lossStreak < 30) {
+        return [
+            "ALRIGHT BRO, HIT THE BOOKS..",
+            "NO HATE, BUT YOU GOT TO LOCK IN",
+            "IS THIS YOUR FIRST RODEO??",
+            "NO WORRIES, WE'VE ALL BEEN THERE.",
+            "DO YOU EVEN MATH, BRO??",
+            "WE'RE TOTALLY NOT ASHAMED OF YOU..",
+            "IT'S OVER FOR YOU"
+        ]
+    }    
+}
+
+export function generalProblemStreaks(winStreak, lossStreak, numQuestions) {
+    if (wins === numQuestions) {
+        return [
+            "THIS IS SOME EULER-LEVEL KNOWLEDGE..",
+            "ELITE BALL KNOWLEDGE!!!",
+            "IS THIS GAME TOO EASY FOR YOU?",
+            "WHO LET HIM COOK???",
+            "ALRIGHT BRO, WE SEE THE FIT",
+            "FREDERICK CARL WHO? ISSAC WHO???",
+        ]
+    }
+}
+
 export function fisherYates(arr) { 
     // samples a random permutation, not derangements
     // acceptable if don't care about 1/N! chance of identity permutation
